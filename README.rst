@@ -15,7 +15,7 @@ Project Contents
     The current project content features deep learning work on a basic feed-foward network and, while it has some unfinished work, the implementations are fairly clean and I hope it is easy to use and easy to understand.
 
 |Genetic algorithm|_
-    GA implementation for classification datasets.
+    Still a WIP, there is an implementation of a very simple genetic algorithm available in the `nature` directory. It is currently implemented as a classifier model.
 
 
 ****
@@ -45,6 +45,10 @@ Except where noted otherwise, this project is licensed under the `LGPL-3.0`_.
 .. |nature directory| replace:: nature directory
 
 .. Datasets:
+.. _data directory: sandbox/data/Iris
+.. _Iris dataset: https://en.wikipedia.org/wiki/Iris_flower_data_set
+.. |Iris dataset| replace:: Iris dataset
+
 
 .. LOCAL FILES:
 .. _LGPL-3.0: LICENSE

@@ -219,3 +219,20 @@ class Ones(Constant):
     def __init__(self, fill_value=1.0):
         super().__init__(fill_value)
 
+
+#==============================================================================
+#------------------------------------------------------------------------------
+#                    Pretrained variable Initializers
+#------------------------------------------------------------------------------
+#==============================================================================
+
+''' # TODO
+class Pretrained:
+    """ Restores a pretrained variable """
+    def __init__(self, trained_params):
+        self.trained_params = trained_params
+
+
+    def __call__(self, kdims):
+        pass
+'''

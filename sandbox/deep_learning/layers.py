@@ -14,7 +14,7 @@ constituent initialization and updating).
 
 """
 import functions
-from initializers import GlorotNormal, HeNormal, Zeros, Ones
+from initializers import HeNormal, Zeros, Ones
 
 #==== Initializers
 #HeNormal = initializers.HeNormal
@@ -138,7 +138,7 @@ class Dense(Layer):
         gradient placeholders for their respective parameters
 
     """
-    def __init__(self, ID, kdims, init_W=GlorotNormal, init_B=Zeros):
+    def __init__(self, ID, kdims, init_W=HeNormal, init_B=Zeros):
         super().__init__(ID, kdims)
         self.linear = functions.Linear()
         self.initialize_vars(init_W, init_B)

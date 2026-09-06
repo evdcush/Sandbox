@@ -1,6 +1,13 @@
 """ All math functions and ops used by a model
 
+This module provides the foundation of functions and operations
+to build a network and optimize models.
 
+It contains only the units that would used within a model.
+Other functions, for training or data processing, can be found in `to_
+
+Module components
+=================
 Function : base class for functions
 
 atomic functions : elementary functions and factors
@@ -13,7 +20,7 @@ ReductionFunction : functions that reduce dimensionality
      Sum, Mean, Prod, XMax, XMin
 
 activation functions : nonlinearities
-    Relu, ELU, Selu, Softplus, Sigmoid, Tanh, Softmax, Swish
+    ReLU, ELU, SeLU, Softplus, Sigmoid, Tanh, Softmax, Swish
 
 loss functions : objectives for gradient descent
     LogisticCrossEntropy, SoftmaxCrossEntropy
@@ -21,7 +28,7 @@ loss functions : objectives for gradient descent
 """
 import code
 import numpy as np
-from code import interact
+
 
 #------------------------------------------------------------------------------
 # Helpers and handy decorators
@@ -74,7 +81,6 @@ def to_one_hot(Y, num_classes=3):
     # make one-hot
     one_hot = np.zeros((n, d))
     one_hot[np.arange(n), Y] = 1
-    #interact(local=dict(globals(), **locals()))
     return one_hot.astype(np.int32)
 
 
@@ -132,12 +138,12 @@ class Function:
 
     def __str__(self,):
         # str : $classname
-        #     eg 'Matmul'
+        #     eg 'MatMul'
         return self.name
 
     def __repr__(self):
         # repr : functions.$classname
-        #    eg "functions.Matmul"
+        #    eg "functions.MatMul"
         rep = '"functions.{}()"'.format(self.__class__.__name__)
         return rep
 
@@ -176,7 +182,7 @@ class Function:
         For example:
             Tanh : tanh, tanh_prime
             Sqrt : sqrt, sqrt_prime
-            Matmul : matmul, matmul_prime
+            MatMul : matmul, matmul_prime
 
         Some Functions, however, have forward or backward processes
         that have more significant side-effects or other constraints
@@ -375,7 +381,7 @@ class Bias(Function): # #
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-class Matmul(Function): # #
+class MatMul(Function): # #
     """ Matrix multiplication function defined on 2D matrices
 
     Assumes: matrices X, Y are properly ordered as input args
@@ -419,7 +425,7 @@ class Matmul(Function): # #
 
 class Linear(Function): ##
     """ Affine transformation function, Y = X.W + B
-    See also: Matmul and Bias, which Linear composes
+    See also: MatMul and Bias, which Linear composes
 
     Params
     ------
@@ -437,13 +443,13 @@ class Linear(Function): ##
     """
     @staticmethod
     def linear(x, w, b):
-        y = Matmul.matmul(x, w)
+        y = MatMul.matmul(x, w)
         z = Bias.bias(y, b)
         return z
 
     @staticmethod
     def linear_prime(x, w, b):
-        dX, dW = Matmul.matmul_prime(x, w)
+        dX, dW = MatMul.matmul_prime(x, w)
         _,  dB = Bias.bias_prime(x, b)
         return dX, dW, dB
 
@@ -455,8 +461,8 @@ class Linear(Function): ##
     def backward(self, gZ, W, B):
         X = self.cache
         dX, dW, dB = self.linear_prime(X, W, B)
-        gX = Matmul.matmul(gZ, dX) # (N, K).(K, D)
-        gW = Matmul.matmul(dW, gZ) # (D, N).(N, K)
+        gX = MatMul.matmul(gZ, dX) # (N, K).(K, D)
+        gW = MatMul.matmul(dW, gZ) # (D, N).(N, K)
         gB = np.sum(gZ * dB, axis=0)
         return gX, gW, gB
 
@@ -712,8 +718,8 @@ class Softmax(Function): # #
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-class Relu(Function): #
-    """ Relu activation : zero out any elements < 0 """
+class ReLU(Function): #
+    """ ReLU activation : zero out any elements < 0 """
     @staticmethod
     def relu(x):
         return x.clip(min=0)
@@ -783,11 +789,11 @@ class ELU(Function): #
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-class Selu(ELU): #
+class SeLU(ELU): #
     """ Scaled Exponential Linear Units
     ELU, but with a scalar and finetuning
 
-    Selu is the activation function featured in
+    SeLU is the activation function featured in
     "Self-Normalizing Neural Networks," and they
     are designed to implicitly normalize feed-forward
     networks.
@@ -795,7 +801,7 @@ class Selu(ELU): #
     Reference
     ---------
     Paper : https://arxiv.org/abs/1706.02515
-        explains the properties and derivations for Selu
+        explains the properties and derivations for SeLU
         parameters, but the precision values below from their
         project code @ github.com/bioinf-jku/SNNs/
 
@@ -830,8 +836,8 @@ class Swish(Function): # #
     """ Self-gated activation function
     Can be viewed as a smooth function where the nonlinearity
     interpolates between the linear function (x/2), and the
-    Relu function.
-    Intended to improve/replace the Relu masterrace
+    ReLU function.
+    Intended to improve/replace the ReLU masterrace
 
     "The best discovered activation function",
     - Authors
@@ -904,7 +910,7 @@ class LogisticCrossEntropy(Function): #
     def logistic_cross_entropy_prime(x, t):
         return (x - t) / x.size
 
-    def forward(self, X, t_vec, num_classes):
+    def forward(self, X, t_vec):
         """
         Params
         ------
@@ -985,7 +991,7 @@ class SoftmaxCrossEntropy(Function): #
         return (x - t) / x.shape[0]
 
 
-    def forward(self, X, t_vec, num_classes):
+    def forward(self, X, t_vec):
         """ Cross entropy loss function defined on a
         softmax activation
 
@@ -1010,7 +1016,7 @@ class SoftmaxCrossEntropy(Function): #
         assert X.ndim == 2 and t_vec.shape[0] == X.shape[0]
 
         # Convert labels to 1-hot
-        t = to_one_hot(np.copy(t_vec), X.shape[-1])#num_classes) # (N,D)
+        t = to_one_hot(np.copy(t_vec)) # (N,D)
 
         # Softmax activation
         #----------------------
@@ -1020,7 +1026,6 @@ class SoftmaxCrossEntropy(Function): #
         # Average cross entropy
         #----------------------
         Y = self.softmax_cross_entropy(np.copy(p), t)
-        #interact(local=dict(globals(), **locals()))
         return Y, p
 
 
@@ -1053,7 +1058,7 @@ class SoftmaxCrossEntropy(Function): #
 #------------------------------------------------------------------------------
 
 class MSE(ReductionFunction): #
-    """ Mean Squared Error loss function
+    """ Mean Squared Error loss function 
     """
     @staticmethod
     def mse(x, y, **kwargs): #sum_axis=None): # not yet supported
@@ -1148,15 +1153,15 @@ class Dropout(Function):
 ACTIVATIONS = {'sigmoid'  : Sigmoid,
                 'tanh'    : Tanh,
                 'softmax' : Softmax,
-                'relu'    : Relu,
+                'relu'    : ReLU,
                 'softplus': SoftPlus,
                 'elu'     : ELU,
-                'selu'    : Selu,
+                'selu'    : SeLU,
                 'swish'   : Swish,
                 }
 
 CONNECTIONS = {'bias'  : Bias,
-               'matmul': Matmul,
+               'matmul': MatMul,
                'linear': Linear,
                #'lstm' : LSTM,
                }
@@ -1167,6 +1172,290 @@ OBJECTIVES = {'logistic_cross_entropy': LogisticCrossEntropy,
 
 
 
+
+
+
+"""===========================================================================#
+
+STILL PENDING REWORK FROM v1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+[X] ReductionFunction
+    [X] Sum
+    [X] Mean
+    [X] Prod
+    [ ] Max/Min
+
+
+IN PIPELINE:
+LSTM : stub and gradient reference
+    just walk it back now and consolidate ops; probably only need to cache
+    3~4 things on forward
+      - *even still* this likely won't work as a Function in the same manner
+         as the other connection func Linear does. Having to keep cell-state
+         and previous output, in addition to normal caching, makes it make
+         more sense as a layer
+
+LayerNorm : working on stdv
+    the actual layernorm func is simple, but requires standard dev func;
+    should be able to just compose the related functions (mean, square, sqrt)
+    to make a stdv function class, then use that for layernorm func
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+'''
+#==============================================================================
+#------------------------------------------------------------------------------
+#                            CONNECTION FUNCTIONS
+#------------------------------------------------------------------------------
+#==============================================================================
+
+
+# NAIVE, BY-HAND GRADIENT VERSION
+@TODO
+
+# WIP
+class LSTM(Function):
+    """ Stateless Long short-term memory function
+
+    A LSTM is a type of recurrent network unit defined as block of
+    gated operations on external and internal representations.
+
+    It takes in some external input X, which is typically a sample within
+    a sequence, along with weights W, and performs a series of gated
+    operations on these inputs combined with it's own stateful variable
+    (cell-state) C, and "memory" the previous ouput in the sequence H.
+
+    Params
+    ------
+    X : ndarray, (N, D)
+        external input to unit
+
+    W : ndarray, (D+K, 4*K)
+        the weight variables for each of the four gated operations (hence
+        the 4*K output channel)
+        These 4 gates are as follows:
+        i : input gate
+        a : activation gate
+        f : forget gate
+        o : output gate
+
+    H : ndarray, (N, K)
+        previous function output
+
+    C : ndarray, (N, K)
+        cell state
+
+    While the gated operations are typically computed in combination with
+    constituent weight variable, the individual weights are instead
+    concatenated, and matmul against the concatenated X, H
+    """
+    @staticmethod
+    def lstm(x, h, c, w):
+        pass
+
+    def forward(self, X, W, H, C):
+        cache = []
+        # Concat input and previous output
+        Z = np.concatenate([X, H], axis=1) # (N, D+K)
+        cache.append(Z)
+
+        # Transform and split into units
+        #-------------------------------
+        iafo = np.matmul(Z, W) # (N, D+K).(D+K, 4*K)
+        i, a, f, o = np.split(iafo, 4, axis=1) # (N, K)
+
+        # Gate each unit
+        #---------------
+        ai = Sigmoid.sigmoid(i)  # ai --> "[a]ctivated [i]nput" ;]
+        aa = Tanh.tanh(a)
+        af = Sigmoid.sigmoid(1 + f)
+        ao = Sigmoid.sigmoid(o)
+
+        # Cache for backprop
+        cache.extend([ai, aa, af, ao, C])
+
+        # Update cell-state
+        #------------------
+        C_t = ai * aa + af * C
+        aC_t = Tanh.tanh(np.copy(C_t))
+
+        # Cache for backprop
+        cache.append(aC_t)
+        self.cache = cache
+
+        # Calculate output
+        H_t = ao * aC_t
+        return H_t, C_t
+
+    def backward(self, gH, W):
+        # Retrieve intermediate vars from cache
+        Z, ai, aa, af, ao, C, aC_t = self.cache
+
+        # Backprop through gated ops
+        #---------------------------
+        #==== H_t
+        do = gH * aC_t * Sigmoid.sigmoid_prime(ao)
+        dC = gH * ao * Tanh.tanh_prime(aC_t)
+        #==== C_t
+        di = dC * aa * Sigmoid.sigmoid_prime(ai)
+        da = dC * ai * Tanh.tanh_prime(aa)
+        df = dC * C  * Sigmoid.sigmoid_prime(af)
+        gC = dC + af
+
+        # Backprop through transformation
+        #--------------------------------
+        diafo = np.concatenate([di, da, df, do], axis=1) # (N, 4*K)
+        dZ = np.matmul(diafo, W.T) # (N, 4*K).(4*K, D+K)
+        gW = np.matmul(Z.T, diago) # (D*K, N).(N, 4*K)
+
+        # Split inputs
+        gX, gH = np.split(dZ, [-C.shape[-1]], axis=1)
+        return gX, gW, gH, gC
+
+     def __call__(self, *args, **kwargs):
+        print('LSTM WIP, PENDING TESTING, DO NOT CALL')
+        assert False
+
+'''
+
+
+
+
+#------------------------------------------------------------------------------
+# Normalization
+#------------------------------------------------------------------------------
+'''
+class LayerNormalization(Function):
+    def __init__(self, *args, **kwargs):
+        self.mean = Mean()
+        self.sqrt = Sqrt()
+        self.square = Square()
+        super().__init__(*args, **kwargs)
+
+    @staticmethod
+    def layer_normalization(x, g, b, std, mu):
+        y = (g / std) * (x - mu) + b
+        return y
+
+    @staticmethod
+    def layer_normalization_prime(x, g, b, dstd, dmu):
+        pass
+
+
+
+
+class LayerNormalization(Function):
+    """ Normalization routine defined on statistics from the summed
+        connections between a layer and a single input case
+    It is designed to overcome several drawbacks of batch normalization,
+    the most significant being the latter's dependence on batch-size
+
+    # see p.3 of orig article for func defs
+    #-----> https://arxiv.org/pdf/1607.06450.pdf
+
+
+    # by hand
+    x : (N, D)
+    g : (D,)
+    b : (D,)
+    #---------
+
+    #===== Fwd
+    mu = np.mean(x, **kw) # (N, 1)
+    diff = x - mu
+    sqr_diff = diff**2
+    var = np.mean(sqr_diff, **kw) # (N, 1)
+    std = np.sqrt(var) # (N, 1)
+    #- - - - - - -
+    gds = g / std  # (N, D)
+    xmu = x - mu   # (N, D)
+    gdxm = gds * xmu
+    y = gdxm + b # (N, D)
+
+    #===== Bwd
+    dgdxm = gY
+    db = gY.sum(0)
+    dgds = dgdxm * xmu
+    dxmu = dgdxm * gds
+    dx  = dxmu
+    dmu = -dxmu
+    dg = dgds * -(1/np.square(std)) # or -1 / var
+    dstd = dgds * g
+
+    dvar = dstd * 1/(2*sqrt(var))
+    dsqr_diff = dvar * np.broadcast_to(sqr_diff, (x.shape)) / x.shape[1]
+    ddiff = dsqr_diff * 2*diff
+    dx += ddiff
+    dmu += -dxmu
+    dx += dmu * np.broadcast_to(mu, x.shape) / x.shape[1]
+
+
+    @staticmethod
+    def get_stats(x):
+        kw = {'axis':1, 'keepdims':True}
+        mu  = np.mean(x, **kw)
+        std = np.std(x, **kw) # (N, 1)
+        return mu, std
+
+    @staticmethod
+    def layer_norm(x, g, b):
+        mu, std = LayerNormalization.get_stats(np.copy(x))
+        y = (g / std) * (x - mu) + b
+        return y
+
+    @staticmethod
+    def layer_norm_prime(x, g, b):
+        pass
+
+
+    def forward(self, X, gain, bias):
+        self.cache = X, gain, bias
+        y = self.layer_norm(X, gain, bias)
+        return y
+
+    def backward(self, gY):
+        pass
+        """
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+class MaxMin(ReductionFunction):
+    """ Base class for max, min funcs """
+    MM_func  = None
+    cmp_func = None
+
+    def reset_fn_vars(self):
+        super().reset_fn_vars()
+        self.X = self.Y = None
+
+    def forward(self, X, axis=None, keepdims=False):
+        self.fn_vars = X.shape, axis
+        Y = self.MM_func(X, axis=axis, keepdims=keepdims)
+        self.X = X
+        self.Y = Y
+        return Y
+
+    def backward(self, gY):
+        X  = self.X
+        Y  = self.restore_shape(self.Y)
+        gY = self.restore_shape(gY)
+        gX = np.where(self.cmp_func(X, Y), gY, 0)
+        self.reset_fn_vars()
+        return gX
+
+
+class Max(MaxMin):
+    """ Computes max along axis """
+    MM_func  = np.max
+    cmp_func = lambda x, y: x >= y
+
+class Min(MaxMin):
+    """ Computes min along axis """
+    MM_func  = np.min
+    cmp_func = lambda x, y: x < y
+
+'''
 
 
 

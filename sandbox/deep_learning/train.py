@@ -1,109 +1,107 @@
-""" Train script for classifier network
+""" Training script for iris model
 """
 import numpy as np
 
 import utils
-import functions as F
-import optimizers
+from utils import SessionStatus, classification_accuracy
 from network import NeuralNetwork
 
-#-----------------------------------------------------------------------------#
-#                                    SETUP                                    #
-#-----------------------------------------------------------------------------#
 
-args = utils.parse_args()
+# args parser
+#------------------
+# config contains all model and session setup options
+parser = utils.Parser()
+config = parser.parse_args()
+parser.print_args()
 
-# Data
-# ====
-dataset = utils.DATASETS[args.dataset]()
-assert hasattr(dataset, 'target_names')  # only support classification for now
-dataset.split_dataset() # splits dataset into train, validation, test sets
-num_features = dataset.x_train.shape[-1]
-num_classes  = len(dataset.target_names)
-
-# model conf
-# ==========
-channels = [num_features, 128, num_classes]
-activation = F.Selu
-learn_rate = 0.001
-
-# training conf
-# =============
-num_iters  = args.iters
-batch_size = args.batch_size
-num_test = dataset.x_test.shape[0]
-#num_val  = dataset.x_validation.shape[0]
+# Load data
+#------------------
+iris_data = utils.IrisDataset()
+num_test_samples = iris_data.X_test.shape[0]
 
 
-# Initialize model
-# ================
-np.random.seed(args.rand)
-model = NeuralNetwork(channels, activation=activation)
-optimizer = optimizers.Adam(alpha=learn_rate)
-objective = F.SoftmaxCrossEntropy()
-#objective = F.LogisticCrossEntropy()
+#==============================================================================
+# Model, session config
+#==============================================================================
+# Model config
+#------------------
+channels   = config.channels
+activation = config.activation
+optimizer  = config.optimizer
+objective  = config.objective
+dropout    = config.dropout
+learning_rate = config.learn_rate # 0.01, omitted, opt defaults well configured
+
+# Session config
+#------------------
+num_iters  = config.num_iters
+batch_size = config.batch_size
+verbose = config.verbose
 
 
-#-----------------------------------------------------------------------------#
-#                                    TRAIN                                    #
-#-----------------------------------------------------------------------------#
-training_error = np.zeros((num_iters, 2))
+# Model initialization
+#------------------------------------------------------------------------------
 
-np.random.seed(0)
+# Instantiate model
+#------------------
+np.random.seed(config.seed)
+model = NeuralNetwork(channels, activation=activation, use_dropout=dropout)
+opt   = optimizer()
+objective = objective()
+
+# Model status reporter
+#------------------
+sess_status = SessionStatus(model, opt, objective, num_iters, num_test_samples)
+
+
+#==============================================================================
+# Train
+#==============================================================================
+np.random.seed(utils.RNG_SEED_DATA)
+
 for step in range(num_iters):
-    # training batch
-    x, y = dataset.get_batch(batch_size)
+    # batch data
+    #------------------
+    x, y = iris_data.get_batch(step, batch_size)
 
     # forward pass
+    #------------------
     y_hat = model.forward(x)
-    error, class_scores = objective(y_hat, y, num_classes)
-    accuracy = utils.classification_accuracy(class_scores, y)
-    training_error[step] = [error, accuracy]
-    pred = np.argmax(class_scores, 1)
-    #print(f'{step:>5}: {pred} | {y}')
+    error, class_scores = objective(y_hat, y)
+    accuracy = classification_accuracy(class_scores, y)
+    sess_status(step, error, accuracy, show=verbose)
 
     # backprop and update
+    #------------------
     grad_loss = objective(backprop=True)
     model.backward(grad_loss)
-    model.update(optimizer)
-
-utils.print_results(training_error[:,0], title='loss')
-utils.print_results(training_error[:,1], title='accuracy')
+    model.update(opt)
 
 
-#-----------------------------------------------------------------------------#
-#                                    TEST                                     #
-#-----------------------------------------------------------------------------#
-test_error = np.zeros((num_test, 2))
-print('BEGIN TEST')
-import sys
-from code import interact
+# Finished training
+#------------------------------------------------------------------------------
 
-'''
-for i in range(num_test):
-    # data sample
-    j = i + 1
-    x, y = dataset.x_test[i:j], dataset.y_test[i:j]
+
+#==============================================================================
+# Validation
+#==============================================================================
+
+# Test
+#------------------
+for i in range(num_test_samples):
+    x, y = iris_data.get_batch(i, test=True)
 
     # forward pass
+    #------------------
     y_hat = model.forward(x, test=True)
     error, class_scores = objective(y_hat, y)
     accuracy = utils.classification_accuracy(class_scores, y)
-    test_error[i] = [error, accuracy]
-    print(f'{i:3>}: {error:.4f} {accuracy:.4f}')
-    interact(local=dict(globals(), **locals()))
-'''
-
-xtest, ytest = dataset.x_test, dataset.y_test
-y_hat = model.forward(xtest, test=True)
-error, class_scores = objective(y_hat, ytest, num_classes)
-accuracy = utils.classification_accuracy(class_scores, ytest)
-test_error[:] = [error, accuracy]
-pred = np.argmax(class_scores, 1)
-print(pred)
-print(ytest)
+    sess_status(i, error, accuracy, show=verbose, test=True)
 
 
-print('FINISH TEST')
-utils.print_results(test_error[:,0], title='loss')
-utils.print_results(test_error[:,1], title='accuracy')
+# Finished test
+#------------------------------------------------------------------------------
+#==============================================================================
+
+# Model performance summary
+sess_status.summarize_model(True, True)

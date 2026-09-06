@@ -63,7 +63,7 @@ import functions as F
 
 class NeuralNetwork:
     """ Fully-connected, feed-forward neural network """
-    def __init__(self, channels, activation=F.Selu, use_dropout=False):
+    def __init__(self, channels, activation=F.SeLU, use_dropout=True):
         """ Initializes an arbitrarily deep neural network
         Params
         ------
